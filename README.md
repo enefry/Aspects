@@ -153,7 +153,13 @@ Installation
 ------------
 The simplest option is to use `pod "Aspects"`.
 
-You can also add the two files `Aspects.h/m` to your project. There are no further requirements.
+Swift Package Manager is also supported. In Xcode, choose File > Add Package Dependencies and enter this repository URL. From another package, depend on a branch or tag that contains `Package.swift`:
+
+```swift
+.package(url: "https://github.com/enefry/Aspects.git", branch: "master")
+```
+
+You can also add the two files `Aspects/Aspects.h/m` to your project. There are no further requirements.
 
 Compatibility and Limitations
 -----------------------------
@@ -175,7 +181,7 @@ Supported iOS & SDK Versions
 -----------------------------
 
 * Aspects requires ARC.
-* Aspects is tested with iOS 7+ and OS X 10.7 or higher.
+* Aspects is tested with iOS 13+ and macOS 10.15 or higher.
 
 License
 -------
