@@ -161,6 +161,18 @@ Swift Package Manager is also supported. In Xcode, choose File > Add Package Dep
 
 You can also add the two files `Aspects/Aspects.h/m` to your project. There are no further requirements.
 
+Swift callers can use the `AspectInfo` convenience API with a plain trailing closure:
+
+```swift
+try UIApplication.aspect_hook(NSSelectorFromString("sendEvent:"), with: .positionInstead) { info in
+    let event = info.arguments()?.first as? UIEvent
+    print("event=>\(String(describing: event))")
+    info.originalInvocation().invoke()
+}
+```
+
+Use `usingBlock:` only when you need Objective-C's advanced block signatures that include the hooked method arguments directly.
+
 Compatibility and Limitations
 -----------------------------
 Aspects uses quite some runtime trickery to achieve what it does. You can mostly mix this with regular method swizzling.

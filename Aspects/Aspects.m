@@ -102,17 +102,31 @@ static NSString *const AspectsMessagePrefix = @"aspects_";
 #pragma mark - Public Aspects API
 
 + (id<AspectToken>)aspect_hookSelector:(SEL)selector
-                      withOptions:(AspectOptions)options
-                       usingBlock:(id)block
-                            error:(NSError **)error {
+	                      withOptions:(AspectOptions)options
+	                       usingBlock:(id)block
+	                            error:(NSError **)error {
+	    return aspect_add((id)self, selector, options, block, error);
+}
+
++ (id<AspectToken>)aspect_hookSelector:(SEL)selector
+                           withOptions:(AspectOptions)options
+                         usingInfoBlock:(AspectInfoBlock)block
+                                  error:(NSError **)error {
     return aspect_add((id)self, selector, options, block, error);
 }
 
 /// @return A token which allows to later deregister the aspect.
 - (id<AspectToken>)aspect_hookSelector:(SEL)selector
-                      withOptions:(AspectOptions)options
-                       usingBlock:(id)block
-                            error:(NSError **)error {
+	                      withOptions:(AspectOptions)options
+	                       usingBlock:(id)block
+	                            error:(NSError **)error {
+	    return aspect_add(self, selector, options, block, error);
+}
+
+- (id<AspectToken>)aspect_hookSelector:(SEL)selector
+                           withOptions:(AspectOptions)options
+                         usingInfoBlock:(AspectInfoBlock)block
+                                  error:(NSError **)error {
     return aspect_add(self, selector, options, block, error);
 }
 
@@ -187,7 +201,35 @@ static SEL aspect_aliasForSelector(SEL selector) {
 	return NSSelectorFromString([AspectsMessagePrefix stringByAppendingFormat:@"_%@", NSStringFromSelector(selector)]);
 }
 
+static BOOL aspect_isBlock(id block) {
+    static NSArray *blockClasses;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        NSMutableArray *classes = [NSMutableArray array];
+        for (NSString *className in @[@"__NSGlobalBlock__", @"__NSMallocBlock__", @"__NSStackBlock__"]) {
+            Class blockClass = NSClassFromString(className);
+            if (blockClass) {
+                [classes addObject:blockClass];
+            }
+        }
+        blockClasses = [classes copy];
+    });
+
+    for (Class blockClass in blockClasses) {
+        if ([block isKindOfClass:blockClass]) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
 static NSMethodSignature *aspect_blockMethodSignature(id block, NSError **error) {
+    if (!aspect_isBlock(block)) {
+        NSString *description = [NSString stringWithFormat:@"The object %@ is not an Objective-C block.", block];
+        AspectError(AspectErrorMissingBlockSignature, description, error);
+        return nil;
+    }
+
     AspectBlockRef layout = (__bridge void *)block;
 	if (!(layout->flags & AspectBlockFlagsHasSignature)) {
         NSString *description = [NSString stringWithFormat:@"The block %@ doesn't contain a type signature.", block];
@@ -828,19 +870,19 @@ static void aspect_deregisterTrackedSelector(id self, SEL selector) {
     NSCParameterAssert(block);
     NSCParameterAssert(selector);
     NSMethodSignature *blockSignature = aspect_blockMethodSignature(block, error); // TODO: check signature compatibility, etc.
+    if (!blockSignature) {
+        return nil;
+    }
     if (!aspect_isCompatibleBlockSignature(blockSignature, object, selector, error)) {
         return nil;
     }
 
-    AspectIdentifier *identifier = nil;
-    if (blockSignature) {
-        identifier = [AspectIdentifier new];
-        identifier.selector = selector;
-        identifier.block = block;
-        identifier.blockSignature = blockSignature;
-        identifier.options = options;
-        identifier.object = object; // weak
-    }
+    AspectIdentifier *identifier = [AspectIdentifier new];
+    identifier.selector = selector;
+    identifier.block = block;
+    identifier.blockSignature = blockSignature;
+    identifier.options = options;
+    identifier.object = object; // weak
     return identifier;
 }
 

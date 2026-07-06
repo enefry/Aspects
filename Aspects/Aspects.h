@@ -7,6 +7,15 @@
 
 #import <Foundation/Foundation.h>
 
+#ifndef __has_warning
+#define __has_warning(x) 0
+#endif
+
+#if __has_warning("-Wnullability-completeness")
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnullability-completeness"
+#endif
+
 typedef NS_OPTIONS(NSUInteger, AspectOptions) {
     AspectPositionAfter   = 0,            /// Called after the original implementation (default)
     AspectPositionInstead = 1,            /// Will replace the original implementation.
@@ -38,6 +47,10 @@ typedef NS_OPTIONS(NSUInteger, AspectOptions) {
 
 @end
 
+/// Swift-friendly block form that receives the AspectInfo object.
+/// Use this when the hook body reads method arguments from `-[AspectInfo arguments]`.
+typedef void (^AspectInfoBlock)(id<AspectInfo> _Nonnull info);
+
 /**
  Aspects uses Objective-C message forwarding to hook into messages. This will create some overhead. Don't add aspects to methods that are called a lot. Aspects is meant for view/controller code that is not called a 1000 times per second.
 
@@ -55,15 +68,29 @@ typedef NS_OPTIONS(NSUInteger, AspectOptions) {
 /// @note Hooking static methods is not supported.
 /// @return A token which allows to later deregister the aspect.
 + (id<AspectToken>)aspect_hookSelector:(SEL)selector
+	                           withOptions:(AspectOptions)options
+	                            usingBlock:(id)block
+	                                 error:(NSError **)error;
+
+/// Adds a Swift-friendly block that receives only `id<AspectInfo>`.
+/// In Swift this can be called with a plain trailing closure instead of manually declaring `@convention(block)`.
++ (id<AspectToken>)aspect_hookSelector:(SEL)selector
                            withOptions:(AspectOptions)options
-                            usingBlock:(id)block
-                                 error:(NSError **)error;
+                         usingInfoBlock:(AspectInfoBlock _Nonnull)block
+                                  error:(NSError **)error NS_SWIFT_NAME(aspect_hook(_:with:using:));
 
 /// Adds a block of code before/instead/after the current `selector` for a specific instance.
 - (id<AspectToken>)aspect_hookSelector:(SEL)selector
+	                           withOptions:(AspectOptions)options
+	                            usingBlock:(id)block
+	                                 error:(NSError **)error;
+
+/// Adds a Swift-friendly block that receives only `id<AspectInfo>`.
+/// In Swift this can be called with a plain trailing closure instead of manually declaring `@convention(block)`.
+- (id<AspectToken>)aspect_hookSelector:(SEL)selector
                            withOptions:(AspectOptions)options
-                            usingBlock:(id)block
-                                 error:(NSError **)error;
+                         usingInfoBlock:(AspectInfoBlock _Nonnull)block
+                                  error:(NSError **)error NS_SWIFT_NAME(aspect_hook(_:with:using:));
 
 @end
 
@@ -81,3 +108,7 @@ typedef NS_ENUM(NSUInteger, AspectErrorCode) {
 };
 
 extern NSString *const AspectErrorDomain;
+
+#if __has_warning("-Wnullability-completeness")
+#pragma clang diagnostic pop
+#endif

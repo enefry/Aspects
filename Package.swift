@@ -22,5 +22,10 @@ let package = Package(
             sources: ["Aspects.m"],
             publicHeadersPath: "."
         ),
+        .testTarget(
+            name: "AspectsSwiftTests",
+            dependencies: ["Aspects"],
+            path: "Tests/AspectsSwiftTests"
+        ),
     ]
 )
